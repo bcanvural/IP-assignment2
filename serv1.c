@@ -14,6 +14,7 @@ int main(int argc, char **argv) {
     // struct hostent *resolv; 
     socklen_t addrlen;
     int client_count = 0;
+    int reuseaddr = 1;
 
 
     socketfd = socket(AF_INET, SOCK_STREAM, 0);
@@ -27,6 +28,8 @@ int main(int argc, char **argv) {
     addr.sin_port = htons(4444);
     // addr.sin_addr.s_addr = htonl(INADDR_ANY);
     addr.sin_addr.s_addr = inet_addr("127.0.0.1");
+
+    setsockopt(socketfd, SOL_SOCKET, SO_REUSEADDR, &reuseaddr, sizeof(reuseaddr));
 
     err = bind(socketfd, (struct sockaddr *) &addr, sizeof(struct sockaddr_in));
     if (err < 0) {
