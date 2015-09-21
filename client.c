@@ -11,7 +11,7 @@ int main(int argc, char **argv) {
     struct hostent *h;
     struct in_addr *addr;
     struct sockaddr_in serv_addr;
-    int recv_count;
+    uint32_t recv_count;
 
     if (argc != 2) {
         printf("Syntax: %s <hostname>\n", argv[0]);
@@ -46,7 +46,7 @@ int main(int argc, char **argv) {
 
     printf("Connected!!!\n");
     if (read(socketfd, &recv_count, sizeof(recv_count)) < 0) {
-        printf("read error");
+        perror("read error");
     }
     else {
         printf("I received: %d\n", recv_count);

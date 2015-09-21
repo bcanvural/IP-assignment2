@@ -13,8 +13,9 @@ int main(int argc, char **argv) {
     struct sockaddr_in addr, client_addr;
     // struct hostent *resolv; 
     socklen_t addrlen;
-    int client_count = 0;
+    uint32_t client_count = 0;
     int reuseaddr = 1;
+    ssize_t bytes_written;
 
 
     socketfd = socket(AF_INET, SOCK_STREAM, 0);
@@ -56,7 +57,12 @@ int main(int argc, char **argv) {
         else {
             client_count++;
             printf("Connection from %s \n", inet_ntoa(client_addr.sin_addr));
-            write(newsockfd, &client_count, sizeof(client_count));
+            bytes_written = write(newsockfd, &client_count, sizeof(client_count));
+
+            if (bytes_written < sizeof(client_count)) {
+                perror("Not enough bytes are written!");
+            }
+
             close(newsockfd);
 
         }
