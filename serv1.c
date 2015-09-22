@@ -13,7 +13,6 @@
 int main(int argc, char **argv) {
     int socketfd, newsockfd, err, res;
     struct sockaddr_in addr, client_addr;
-    // struct hostent *resolv; 
     socklen_t addrlen;
     uint32_t client_count = 0;
     int reuseaddr = 1;

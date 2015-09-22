@@ -39,7 +39,6 @@ void sig_chld(int sig) {
 int main(int argc, char **argv) {
     int socketfd, newsockfd, err, res, pid;
     struct sockaddr_in addr, client_addr;
-    // struct hostent *resolv; 
     socklen_t addrlen;
     int reuseaddr = 1;
     ssize_t bytes_written;
