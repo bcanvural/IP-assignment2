@@ -6,6 +6,8 @@
 #include <netdb.h>
 #include <arpa/inet.h>
 
+#define PORT_NUM 4444
+
 int main(int argc, char **argv) {
     int socketfd;
     struct hostent *h;
@@ -35,7 +37,7 @@ int main(int argc, char **argv) {
     }
 
     serv_addr.sin_family = AF_INET;
-    serv_addr.sin_port = htons(4444);
+    serv_addr.sin_port = htons(PORT_NUM);
     serv_addr.sin_addr = *addr;
 
     if (connect(socketfd, (struct sockaddr *) &serv_addr, sizeof(serv_addr)) < 0) {

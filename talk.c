@@ -1,11 +1,15 @@
 #include <stdio.h>
 #include <stdlib.h>
+#include <errno.h>
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <netdb.h>
 #include <arpa/inet.h>
 #include <signal.h>
+
+#define PORT_NUM 5555
+#define MAX_MESSAGE_LENGTH 1024
 
 ssize_t writen(int fd, const void *vptr, size_t n) {
     size_t nleft;
@@ -36,6 +40,7 @@ int server() {
     socklen_t addrlen;
     int reuseaddr = 1;
 
+    char input[MAX_MESSAGE_LENGTH];
 
     socketfd = socket(AF_INET, SOCK_STREAM, 0);
 
@@ -45,7 +50,7 @@ int server() {
     }
 
     addr.sin_family = AF_INET;
-    addr.sin_port = htons(5555);
+    addr.sin_port = htons(PORT_NUM);
     addr.sin_addr.s_addr = inet_addr("127.0.0.1");
 
     setsockopt(socketfd, SOL_SOCKET, SO_REUSEADDR, &reuseaddr, sizeof(reuseaddr));
@@ -53,7 +58,7 @@ int server() {
     err = bind(socketfd, (struct sockaddr *) &addr, sizeof(struct sockaddr_in));
     if (err < 0) {
         perror("Error when binding socket!");
-        close(socketfd);    int server_mode;
+        close(socketfd);
 
         exit(1);
     }
@@ -64,17 +69,45 @@ int server() {
         close(socketfd);
         exit(1);
 
-    }    int server_mode;
+    }
 
     addrlen = sizeof(struct sockaddr_in);
+
+    newsockfd = accept(socketfd, (struct sockaddr *) &client_addr, &addrlen);
+    if (newsockfd < 0) {
+        perror("newsockfd accept error");
+    }
+    else {
+        printf("Client connection accepted!\n");
+    }
+
+    // Start reading keyboard input and send it to the client
+    while (1) {
+        if (gets(input) == NULL) {
+            perror("input error");
+        }
+        else {
+            writen(newsockfd, &input, sizeof(input));
+        }
+    }
+
+
+    close(newsockfd);
+    close(socketfd);
 
 
 }
 
 
 int client(char *hostname) {
+    int socketfd;
+
     struct hostent *h;
     struct sockaddr_in serv_addr;
+    struct in_addr *addr;
+
+    char recv_message[MAX_MESSAGE_LENGTH];
+
 
 
     h = gethostbyname(hostname);
@@ -83,10 +116,19 @@ int client(char *hostname) {
         fprintf(stderr, "Hostname \"%s\" could not be resolved\n", hostname);
         exit(-2);
     }
+
+    addr = (struct in_addr*) h->h_addr_list[0];
+
+    socketfd = socket(AF_INET, SOCK_STREAM, 0);
+
+    if (socketfd < 0) {
+        perror("Error when creating socket!");
+        exit(1);
+    }
     
 
     serv_addr.sin_family = AF_INET;
-    serv_addr.sin_port = htons(5555);
+    serv_addr.sin_port = htons(PORT_NUM);
     serv_addr.sin_addr = *addr;
 
     if (connect(socketfd, (struct sockaddr *) &serv_addr, sizeof(serv_addr)) < 0) {
@@ -95,6 +137,16 @@ int client(char *hostname) {
         exit(1);
     }
 
+    printf("Connected to server!\n");
+
+    while (1) {
+        read(socketfd, &recv_message, sizeof(recv_message));
+        printf("Received: %s\n", recv_message);
+    }
+
+
+    close(socketfd);
+
 
 
 
@@ -102,7 +154,7 @@ int client(char *hostname) {
 
 
 
-int main(int argc, char const **argv) {
+int main(int argc, char **argv) {
     int server_mode;
     char *hostname;
 

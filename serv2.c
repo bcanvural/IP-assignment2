@@ -10,6 +10,8 @@
 #include <sys/shm.h>
 #include <sys/sem.h>
 
+#define PORT_NUM 4444
+
 // Shared memory id and semaphore id. Made global for use in the custom SIGINT 
 // handler to destroy the ID when the server is killed. 
 int sem;
@@ -51,7 +53,7 @@ int main(int argc, char **argv) {
     }
 
     addr.sin_family = AF_INET;
-    addr.sin_port = htons(4444);
+    addr.sin_port = htons(PORT_NUM);
     // addr.sin_addr.s_addr = htonl(INADDR_ANY);
     addr.sin_addr.s_addr = inet_addr("127.0.0.1");
 
