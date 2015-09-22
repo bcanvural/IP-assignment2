@@ -26,14 +26,10 @@ int shmid;
 uint32_t *client_counter;
 
 void treat_request(int fd){
-    // about to access shared memory, acquire lock
-    semop(sem, &down, 1);
-
+    
     *client_counter = *client_counter + 1;
     ssize_t bytes_written;
     bytes_written = write(fd, client_counter, sizeof(uint32_t));
-    // release lock
-    semop(sem, &up, 1);
 
     if (bytes_written < sizeof(uint32_t)) {
         perror("Not enough bytes are written!");
@@ -49,10 +45,9 @@ void recv_requests(int fd, struct sockaddr_in client_addr , socklen_t*  addrlen)
     /* --- ACQUIRE MUTEX --- */
     semop(sem, &down, 1);
     newfd=accept(fd, (struct sockaddr *) &client_addr, addrlen);
-    //newsockfd = accept(socketfd, (struct sockaddr *) &client_addr, &addrlen);
+    treat_request(newfd);
     /* --- RELEASE MUTEX --- */
     semop(sem, &up, 1);
-    treat_request(newfd);
     close(fd);
     close(newfd);
 
