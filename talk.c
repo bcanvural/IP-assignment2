@@ -35,12 +35,13 @@ ssize_t writen(int fd, const void *vptr, size_t n) {
 
 
 int server() {
-    int socketfd, newsockfd, err, res;
+    int socketfd, newsockfd, err, res, bytes_read;
     struct sockaddr_in addr, client_addr;
     socklen_t addrlen;
     int reuseaddr = 1;
 
-    char input[MAX_MESSAGE_LENGTH];
+    char recv_message[MAX_MESSAGE_LENGTH];
+    char input_message[MAX_MESSAGE_LENGTH];
 
     socketfd = socket(AF_INET, SOCK_STREAM, 0);
 
@@ -81,13 +82,43 @@ int server() {
         printf("Client connection accepted!\n");
     }
 
-    // Start reading keyboard input and send it to the client
-    while (1) {
-        if (gets(input) == NULL) {
-            perror("input error");
+
+    int pid;
+
+    pid = fork();
+
+    if (pid == 0) { // The child sends messages to the client
+
+        // Start reading keyboard input and send it to the client
+        while (1) {
+            if (gets(input_message) == NULL) {
+                perror("input error");
+            }
+            else {
+                writen(newsockfd, &input_message, sizeof(input_message));
+            }
         }
-        else {
-            writen(newsockfd, &input, sizeof(input));
+    }
+    else { // The parent reads incoming messages
+
+        while (1) {
+            
+            bytes_read = read(newsockfd, &recv_message, sizeof(recv_message));
+            if (bytes_read == 0) {
+                printf("Session has ended, closing server...\n");
+                kill(pid, SIGTERM);
+                close(newsockfd);
+                return 0;
+            }
+            else if (bytes_read < 0) {
+                perror("Read error occurred");
+                kill(pid, SIGTERM);
+                close(newsockfd);
+                exit(1);
+            }
+            else {
+                printf("%s\n", recv_message);
+            }
         }
     }
 
@@ -100,14 +131,14 @@ int server() {
 
 
 int client(char *hostname) {
-    int socketfd;
+    int socketfd, bytes_read;
 
     struct hostent *h;
     struct sockaddr_in serv_addr;
     struct in_addr *addr;
 
     char recv_message[MAX_MESSAGE_LENGTH];
-
+    char input_message[MAX_MESSAGE_LENGTH];
 
 
     h = gethostbyname(hostname);
@@ -139,9 +170,42 @@ int client(char *hostname) {
 
     printf("Connected to server!\n");
 
-    while (1) {
-        read(socketfd, &recv_message, sizeof(recv_message));
-        printf("Received: %s\n", recv_message);
+    int pid;
+
+    pid = fork();
+
+    if (pid == 0) { // Child sends messages to the server
+        while (1) {
+            
+            if (gets(input_message) == NULL) {
+                perror("input error");
+            }
+            else {
+                writen(socketfd, &input_message, sizeof(input_message));
+            }
+        }
+
+    }
+    else { // Parent reads incoming messages
+        while (1) {
+            
+            bytes_read = read(socketfd, &recv_message, sizeof(recv_message));
+            if (bytes_read == 0) {
+                printf("Session has ended, closing client...\n");
+                kill(pid, SIGTERM);
+                close(socketfd);
+                return 0;
+            }
+            else if (bytes_read < 0) {
+                perror("Read error occurred");
+                kill(pid, SIGTERM);
+                close(socketfd);
+                exit(1);
+            }
+            else {
+                printf("%s\n", recv_message);
+            }
+        }
     }
 
 
@@ -155,10 +219,6 @@ int client(char *hostname) {
 
 
 int main(int argc, char **argv) {
-    int server_mode;
-    char *hostname;
-
-
 
     if (argc < 2 ) {
         server();
