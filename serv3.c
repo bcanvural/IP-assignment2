@@ -11,7 +11,8 @@
 #include <sys/sem.h>
 #include <errno.h>
 
-#define NB_PROC 10 //number of processes to be pre-forked
+//number of processes to be pre-forked
+#define NB_PROC 3
 
 // Set up the semaphore that is used to prevent race conditions in acces to
 // the shared memory segment.
@@ -26,6 +27,16 @@ int shmid;
 // client_counter shared variable, declared globally
 uint32_t *client_counter;
 
+//this struct carries the socket settings and client address
+//this is used when creating another child upon a child's termination
+struct socket_vars {
+  int socketfd;
+  struct sockaddr_in client_addr;
+  socklen_t addrlen;
+};
+//global variable that carries the above variables
+struct socket_vars s_vars;
+
 void treat_request(int fd){
 
   *client_counter = *client_counter + 1;
@@ -36,8 +47,6 @@ void treat_request(int fd){
     perror("Not enough bytes are written!");
   }
 
-//  shmdt((void *) client_counter);
-  //exit(0);
 }
 
 void recv_requests(int fd, struct sockaddr_in client_addr , socklen_t*  addrlen) { /* An iterative server */
@@ -71,9 +80,15 @@ void sig_int(int sig) {
 
 void sig_chld(int sig) {
   while (waitpid(0, NULL, WNOHANG) > 0) {}
+  //create another child upon a child's termination
+  int pid = fork();
+  if(pid == 0){ //child
+    recv_requests(s_vars.socketfd,
+      s_vars.client_addr,
+      &s_vars.addrlen);
+  }
   signal(sig, sig_chld);
 }
-
 
 // The TCP-server with pre-forking structure.
 int main(int argc, char **argv) {
@@ -83,7 +98,6 @@ int main(int argc, char **argv) {
   socklen_t addrlen;
   int reuseaddr = 1;
   ssize_t bytes_written;
-
 
   socketfd = socket(AF_INET, SOCK_STREAM, 0);
 
@@ -142,6 +156,11 @@ int main(int argc, char **argv) {
 
   semop(sem, &up, 1); // Start at value 1
   signal(SIGCHLD, sig_chld);
+
+//setting socket_vars struct
+s_vars.socketfd = socketfd;
+s_vars.client_addr = client_addr;
+s_vars.addrlen = addrlen;
 
   /* Create NB_PROC children. */
   for (int i=0; i<NB_PROC; i++) {
