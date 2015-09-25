@@ -52,7 +52,8 @@ int server() {
 
     addr.sin_family = AF_INET;
     addr.sin_port = htons(PORT_NUM);
-    addr.sin_addr.s_addr = inet_addr("127.0.0.1");
+    // addr.sin_addr.s_addr = inet_addr("130.37.154.76");
+    addr.sin_addr.s_addr = htonl(INADDR_ANY);
 
     setsockopt(socketfd, SOL_SOCKET, SO_REUSEADDR, &reuseaddr, sizeof(reuseaddr));
 

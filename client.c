@@ -46,7 +46,7 @@ int main(int argc, char **argv) {
         exit(1);
     }
 
-    printf("Connected!!!\n");
+    // printf("Connected!!!\n");
     if (read(socketfd, &recv_count, sizeof(recv_count)) < 0) {
         perror("read error");
     }
