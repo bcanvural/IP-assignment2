@@ -7,9 +7,35 @@
 #include <netdb.h>
 #include <arpa/inet.h>
 #include <signal.h>
+#include <termios.h>
+#include <unistd.h>
 
 #define PORT_NUM 5555
-#define MAX_MESSAGE_LENGTH 1024
+
+
+
+char my_getch() {
+    char buf = 0;
+    struct termios oldt, newt;
+    if (tcgetattr(0, &oldt) < 0) {
+        perror("tcgetattr()");
+    }
+
+    newt = oldt;
+    newt.c_lflag &= ~ICANON;
+    newt.c_cc[VMIN] = 1;
+    newt.c_cc[VTIME] = 0;
+    if (tcsetattr(STDIN_FILENO, TCSANOW, &newt) < 0) {
+        perror("tcsetattr ICANON");
+    }
+    if (read(0, &buf, 1) < 0) {
+        perror ("read()");
+    }
+    if (tcsetattr(STDIN_FILENO, TCSANOW, &oldt) < 0) {
+        perror ("tcsetattr ~ICANON");
+    }
+    return buf;
+}
 
 ssize_t writen(int fd, const void *vptr, size_t n) {
     size_t nleft;
@@ -19,7 +45,7 @@ ssize_t writen(int fd, const void *vptr, size_t n) {
     nleft = n;
     
     while (nleft > 0) {
-        if ((nwritten = write(fd, ptr, nleft)) <= 0 ) {
+        if ((nwritten = write(fd, ptr, nleft)) <= 0) {
             if (errno == EINTR) {
                 nwritten = 0; /* and call write() again */
             }
@@ -33,6 +59,31 @@ ssize_t writen(int fd, const void *vptr, size_t n) {
     return n;
 }
 
+ssize_t readn(int fd, void *vptr, size_t n) { /* Read "n" bytes from a descriptor. */
+    size_t  nleft;
+    ssize_t nread;
+    char   *ptr;
+
+    ptr = vptr;
+    nleft = n;
+    while (nleft > 0) {
+        if ((nread = read(fd, ptr, nleft)) < 0) {
+            if (errno == EINTR) {
+                nread = 0;      /* and call read() again */
+            }
+            else {
+                return -1;
+            }
+        } 
+        else if (nread == 0) {
+            break;              /* EOF */
+        }
+        nleft -= nread;
+        ptr += nread;
+    }
+    return (n - nleft);         /* return >= 0 */
+}
+
 
 int server() {
     int socketfd, newsockfd, err, res, bytes_read;
@@ -40,8 +91,6 @@ int server() {
     socklen_t addrlen;
     int reuseaddr = 1;
 
-    char recv_message[MAX_MESSAGE_LENGTH];
-    char input_message[MAX_MESSAGE_LENGTH];
 
     socketfd = socket(AF_INET, SOCK_STREAM, 0);
 
@@ -52,7 +101,6 @@ int server() {
 
     addr.sin_family = AF_INET;
     addr.sin_port = htons(PORT_NUM);
-    // addr.sin_addr.s_addr = inet_addr("130.37.154.76");
     addr.sin_addr.s_addr = htonl(INADDR_ANY);
 
     setsockopt(socketfd, SOL_SOCKET, SO_REUSEADDR, &reuseaddr, sizeof(reuseaddr));
@@ -92,19 +140,20 @@ int server() {
 
         // Start reading keyboard input and send it to the client
         while (1) {
-            if (gets(input_message) == NULL) {
-                perror("input error");
-            }
-            else {
-                writen(newsockfd, &input_message, sizeof(input_message));
-            }
+            char c = my_getch();
+            // if (gets(input_message) == NULL) {
+            //     perror("input error");
+            // }
+            // else {
+            writen(newsockfd, &c, sizeof(c));
+            // }
         }
     }
     else { // The parent reads incoming messages
-
+        char c;
         while (1) {
             
-            bytes_read = read(newsockfd, &recv_message, sizeof(recv_message));
+            bytes_read = readn(newsockfd, &c, sizeof(c));
             if (bytes_read == 0) {
                 printf("Session has ended, closing server...\n");
                 kill(pid, SIGTERM);
@@ -118,7 +167,8 @@ int server() {
                 exit(1);
             }
             else {
-                printf("%s\n", recv_message);
+                // printf("%c", c);
+                putchar(c);
             }
         }
     }
@@ -137,9 +187,6 @@ int client(char *hostname) {
     struct hostent *h;
     struct sockaddr_in serv_addr;
     struct in_addr *addr;
-
-    char recv_message[MAX_MESSAGE_LENGTH];
-    char input_message[MAX_MESSAGE_LENGTH];
 
 
     h = gethostbyname(hostname);
@@ -176,21 +223,25 @@ int client(char *hostname) {
     pid = fork();
 
     if (pid == 0) { // Child sends messages to the server
+        char c;
         while (1) {
+            c = my_getch();
             
-            if (gets(input_message) == NULL) {
-                perror("input error");
-            }
-            else {
-                writen(socketfd, &input_message, sizeof(input_message));
-            }
+            // if (c == '\0') {
+                // perror("input error");
+            // }
+            // else {
+            writen(socketfd, &c, sizeof(c));
+            // }
+            // c = '\0';
         }
 
     }
     else { // Parent reads incoming messages
+        char c;
         while (1) {
             
-            bytes_read = read(socketfd, &recv_message, sizeof(recv_message));
+            bytes_read = readn(socketfd, &c, sizeof(c));
             if (bytes_read == 0) {
                 printf("Session has ended, closing client...\n");
                 kill(pid, SIGTERM);
@@ -204,7 +255,8 @@ int client(char *hostname) {
                 exit(1);
             }
             else {
-                printf("%s\n", recv_message);
+                // printf("%c", c);
+                putchar(c);
             }
         }
     }
@@ -220,6 +272,7 @@ int client(char *hostname) {
 
 
 int main(int argc, char **argv) {
+    setvbuf(stdout, NULL, _IONBF, 0);
 
     if (argc < 2 ) {
         server();
