@@ -51,7 +51,7 @@ int main(int argc, char **argv) {
         perror("read error");
     }
     else {
-        printf("I received: %d\n", recv_count);
+        printf("I received: %d\n", ntohl(recv_count));
     }
 
     close(socketfd);

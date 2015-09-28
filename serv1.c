@@ -5,8 +5,31 @@
 #include <netinet/in.h>
 #include <netdb.h>
 #include <arpa/inet.h>
+#include <errno.h>
 
 #define PORT_NUM 4444
+
+ssize_t writen(int fd, const void *vptr, size_t n) {
+    size_t nleft;
+    ssize_t nwritten;
+    const char *ptr;
+    ptr = vptr;
+    nleft = n;
+    
+    while (nleft > 0) {
+        if ((nwritten = write(fd, ptr, nleft)) <= 0) {
+            if (errno == EINTR) {
+                nwritten = 0; /* and call write() again */
+            }
+            else {
+                return -1; /* error */
+            }
+        }
+        nleft -= nwritten;
+        ptr += nwritten;
+    }
+    return n;
+}
 
 
 // The TCP-server with an iterative structure.
@@ -29,7 +52,6 @@ int main(int argc, char **argv) {
     addr.sin_family = AF_INET;
     addr.sin_port = htons(PORT_NUM);
     addr.sin_addr.s_addr = htonl(INADDR_ANY);
-    // addr.sin_addr.s_addr = inet_addr("127.0.0.1");
 
     setsockopt(socketfd, SOL_SOCKET, SO_REUSEADDR, &reuseaddr, sizeof(reuseaddr));
 
@@ -57,10 +79,11 @@ int main(int argc, char **argv) {
         }
         else {
             client_count++;
+            uint32_t network_order = htonl(client_count);
             printf("Connection from %s \n", inet_ntoa(client_addr.sin_addr));
-            bytes_written = write(newsockfd, &client_count, sizeof(client_count));
+            bytes_written = writen(newsockfd, &network_order, sizeof(network_order));
 
-            if (bytes_written < sizeof(client_count)) {
+            if (bytes_written < sizeof(network_order)) {
                 perror("Not enough bytes are written!");
             }
 

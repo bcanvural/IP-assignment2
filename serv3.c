@@ -28,21 +28,45 @@ int shmid;
 // client_counter shared variable, declared globally
 uint32_t *client_counter;
 
-//this struct carries the socket settings and client address
-//this is used when creating another child upon a child's termination
+// this struct carries the socket settings and client address
+// this is used when creating another child upon a child's termination
 struct socket_vars {
     int socketfd;
     struct sockaddr_in client_addr;
     socklen_t addrlen;
 };
-//global variable that carries the above variables
+// global variable that carries the above variables
 struct socket_vars s_vars;
+
+
+ssize_t writen(int fd, const void *vptr, size_t n) {
+    size_t nleft;
+    ssize_t nwritten;
+    const char *ptr;
+    ptr = vptr;
+    nleft = n;
+    
+    while (nleft > 0) {
+        if ((nwritten = write(fd, ptr, nleft)) <= 0) {
+            if (errno == EINTR) {
+                nwritten = 0; /* and call write() again */
+            }
+            else {
+                return -1; /* error */
+            }
+        }
+        nleft -= nwritten;
+        ptr += nwritten;
+    }
+    return n;
+}
 
 void treat_request(int fd) {
 
     *client_counter = *client_counter + 1;
+    uint32_t network_ordered_counter = htonl(*client_counter);
     ssize_t bytes_written;
-    bytes_written = write(fd, client_counter, sizeof(uint32_t));
+    bytes_written = writen(fd, &network_ordered_counter, sizeof(uint32_t));
 
     if (bytes_written < sizeof(uint32_t)) {
         perror("Not enough bytes are written!");
@@ -50,7 +74,7 @@ void treat_request(int fd) {
 
 }
 
-void recv_requests(int fd, struct sockaddr_in client_addr, socklen_t*  addrlen) { /* An iterative server */
+void recv_requests(int fd, struct sockaddr_in client_addr, socklen_t*  addrlen) {
     int newfd;
 
     /* --- ACQUIRE MUTEX --- */
@@ -83,13 +107,14 @@ void sig_chld(int sig) {
     while (waitpid(0, NULL, WNOHANG) > 0) { }
     //create another child upon a child's termination
     int pid = fork();
-    if (pid == 0){ //child
+    if (pid == 0) { //child
         recv_requests(s_vars.socketfd,
             s_vars.client_addr,
             &s_vars.addrlen);
     }
     signal(sig, sig_chld);
 }
+
 
 // The TCP-server with pre-forking structure.
 int main(int argc, char **argv) {
@@ -109,7 +134,6 @@ int main(int argc, char **argv) {
     addr.sin_family = AF_INET;
     addr.sin_port = htons(PORT_NUM);
     addr.sin_addr.s_addr = htonl(INADDR_ANY);
-    // addr.sin_addr.s_addr = inet_addr("127.0.0.1");
 
     setsockopt(socketfd, SOL_SOCKET, SO_REUSEADDR, &reuseaddr, sizeof(reuseaddr));
 

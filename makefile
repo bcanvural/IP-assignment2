@@ -1,7 +1,8 @@
 CC=gcc
-ALL = client serv1 serv2 serv3 talk
+ALL = client serv1 serv2 serv3 talk talksplit
+LFLAGS = -lncurses
 
-build: client serv1 serv2 serv3 talk
+build: client serv1 serv2 serv3 talk talksplit
 
 client: client.o
 	$(CC) -o client client.o
@@ -17,6 +18,9 @@ serv3: serv3.o
 
 talk: talk.o
 	$(CC) -o talk talk.o
+
+talksplit: talksplit.o
+	$(CC) -o talksplit talksplit.o $(LFLAGS)
 
 clean:
 	$(RM) *.o $(ALL)

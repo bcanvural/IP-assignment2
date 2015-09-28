@@ -9,6 +9,7 @@
 #include <sys/ipc.h>
 #include <sys/shm.h>
 #include <sys/sem.h>
+#include <errno.h>
 
 #define PORT_NUM 4444
 
@@ -34,6 +35,28 @@ void sig_chld(int sig) {
 
 }
 
+ssize_t writen(int fd, const void *vptr, size_t n) {
+    size_t nleft;
+    ssize_t nwritten;
+    const char *ptr;
+    ptr = vptr;
+    nleft = n;
+    
+    while (nleft > 0) {
+        if ((nwritten = write(fd, ptr, nleft)) <= 0) {
+            if (errno == EINTR) {
+                nwritten = 0; /* and call write() again */
+            }
+            else {
+                return -1; /* error */
+            }
+        }
+        nleft -= nwritten;
+        ptr += nwritten;
+    }
+    return n;
+}
+
 
 // The TCP-server with one-proces-per-client structure.
 int main(int argc, char **argv) {
@@ -54,7 +77,6 @@ int main(int argc, char **argv) {
     addr.sin_family = AF_INET;
     addr.sin_port = htons(PORT_NUM);
     addr.sin_addr.s_addr = htonl(INADDR_ANY);
-    // addr.sin_addr.s_addr = inet_addr("127.0.0.1");
 
     setsockopt(socketfd, SOL_SOCKET, SO_REUSEADDR, &reuseaddr, sizeof(reuseaddr));
 
@@ -121,7 +143,8 @@ int main(int argc, char **argv) {
             semop(sem, &down, 1);
 
             *client_counter = *client_counter + 1;
-            bytes_written = write(newsockfd, client_counter, sizeof(uint32_t));
+            uint32_t network_ordered_counter = htonl(*client_counter);
+            bytes_written = writen(newsockfd, &network_ordered_counter, sizeof(uint32_t));
             semop(sem, &up, 1);
 
             if (bytes_written < sizeof(uint32_t)) {
