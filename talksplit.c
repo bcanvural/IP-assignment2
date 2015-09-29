@@ -138,8 +138,8 @@ int server() {
 
     if (pid == 0) { // The child sends messages to the client
 
-        int x = 0;
-        int y = 0; //coordinates on windows
+        int x = 1;
+        int y = 1; //coordinates on windows
 
         // Start reading keyboard input and send it to the client
         while (1) {
@@ -155,8 +155,8 @@ int server() {
     }
     else { // The parent reads incoming messages
         int c;
-        int x = 0;
-        int y = 0; //coordinates
+        int x = 1;
+        int y = 1; //coordinates
         while (1) {
 
             bytes_read = readn(newsockfd, &c, sizeof(c));
@@ -230,8 +230,8 @@ int client(char *hostname) {
 
     if (pid == 0) { // Child sends messages to the server
         int c;
-        int x = 0;
-        int y = 0;
+        int x = 1;
+        int y = 1;
         while (1) {
             c = wgetch(topwin);
             //waddch(topwin, c);
@@ -244,8 +244,8 @@ int client(char *hostname) {
     }
     else { // Parent reads incoming messages
         int c;
-        int x = 0;
-        int y = 0;
+        int x = 1;
+        int y = 1;
 
         while (1) {
 
