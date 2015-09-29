@@ -16,8 +16,6 @@
 WINDOW * topwin;
 WINDOW * botwin;
 
-
-
 char my_getch() {
     char buf = 0;
     struct termios oldt, newt;
@@ -47,7 +45,7 @@ ssize_t writen(int fd, const void *vptr, size_t n) {
     const char *ptr;
     ptr = vptr;
     nleft = n;
-    
+
     while (nleft > 0) {
         if ((nwritten = write(fd, ptr, nleft)) <= 0) {
             if (errno == EINTR) {
@@ -78,7 +76,7 @@ ssize_t readn(int fd, void *vptr, size_t n) { /* Read "n" bytes from a descripto
             else {
                 return -1;
             }
-        } 
+        }
         else if (nread == 0) {
             break;              /* EOF */
         }
@@ -87,7 +85,6 @@ ssize_t readn(int fd, void *vptr, size_t n) { /* Read "n" bytes from a descripto
     }
     return (n - nleft);         /* return >= 0 */
 }
-
 
 int server() {
     int socketfd, newsockfd, err, res, bytes_read;
@@ -132,9 +129,8 @@ int server() {
         perror("newsockfd accept error");
     }
     else {
-        printf("Client connection accepted!\n");
+        //printf("Client connection accepted!\n");
     }
-
 
     int pid;
 
@@ -142,24 +138,27 @@ int server() {
 
     if (pid == 0) { // The child sends messages to the client
 
+        int x = 0;
+        int y = 0; //coordinates on windows
+
         // Start reading keyboard input and send it to the client
         while (1) {
             int c = wgetch(topwin);
 
-            waddch(topwin, c);
+            //waddch(topwin, c);
+            mvwaddch(topwin, y, x, c);
+            x += 1;
             wrefresh(topwin);
-            // if (gets(input_message) == NULL) {
-            //     perror("input error");
-            // }
-            // else {
+
             writen(newsockfd, &c, sizeof(c));
-            // }
         }
     }
     else { // The parent reads incoming messages
         int c;
+        int x = 0;
+        int y = 0; //coordinates
         while (1) {
-            
+
             bytes_read = readn(newsockfd, &c, sizeof(c));
             if (bytes_read == 0) {
                 printf("Session has ended, closing server...\n");
@@ -176,19 +175,16 @@ int server() {
             else {
                 // printf("%c", c);
                 // putchar(c);
-                waddch(botwin, c);
+                //waddch(botwin, c);
+                mvwaddch(botwin, y, x, c);
+                x += 1;
                 wrefresh(botwin);
             }
         }
     }
-
-
     close(newsockfd);
     close(socketfd);
-
-
 }
-
 
 int client(char *hostname) {
     int socketfd, bytes_read;
@@ -196,7 +192,6 @@ int client(char *hostname) {
     struct hostent *h;
     struct sockaddr_in serv_addr;
     struct in_addr *addr;
-
 
     h = gethostbyname(hostname);
 
@@ -213,7 +208,6 @@ int client(char *hostname) {
         perror("Error when creating socket!");
         exit(1);
     }
-    
 
     serv_addr.sin_family = AF_INET;
     serv_addr.sin_port = htons(PORT_NUM);
@@ -228,7 +222,7 @@ int client(char *hostname) {
         exit(1);
     }
 
-    printf("Connected to server!\n");
+    //printf("Connected to server!\n");
 
     int pid;
 
@@ -236,25 +230,25 @@ int client(char *hostname) {
 
     if (pid == 0) { // Child sends messages to the server
         int c;
+        int x = 0;
+        int y = 0;
         while (1) {
             c = wgetch(topwin);
-            waddch(topwin, c);
+            //waddch(topwin, c);
+            mvwaddch(topwin, y, x, c);
+            x += 1;
             wrefresh(topwin);
-            
-            // if (c == '\0') {
-                // perror("input error");
-            // }
-            // else {
-            writen(socketfd, &c, sizeof(c));
-            // }
-            // c = '\0';
-        }
 
+            writen(socketfd, &c, sizeof(c));
+        }
     }
     else { // Parent reads incoming messages
         int c;
+        int x = 0;
+        int y = 0;
+
         while (1) {
-            
+
             bytes_read = readn(socketfd, &c, sizeof(c));
             if (bytes_read == 0) {
                 printf("Session has ended, closing client...\n");
@@ -274,21 +268,16 @@ int client(char *hostname) {
             else {
                 // printf("%c", c);
                 // putchar(c);
-                waddch(botwin, c);
+                //waddch(botwin, c);
+                mvwaddch(botwin, y, x, c);
+                x += 1;
                 wrefresh(botwin);
             }
         }
     }
 
-
     close(socketfd);
-
-
-
-
 }
-
-
 
 int main(int argc, char **argv) {
     setvbuf(stdout, NULL, _IONBF, 0);
@@ -312,11 +301,9 @@ int main(int argc, char **argv) {
 
     if (argc < 2 ) {
         server();
-
     }
     else if (argc == 2) {
         client(argv[1]);
-
     }
     else {
         printf("Server Syntax: %s \n", argv[0]);
@@ -324,13 +311,9 @@ int main(int argc, char **argv) {
         exit(1);
     }
 
-
     delwin(topwin);
     delwin(botwin);
     endwin();
-
-
-
 
     return 0;
 }
