@@ -12,8 +12,6 @@
 
 #define PORT_NUM 5555
 
-
-
 char my_getch() {
     char buf = 0;
     struct termios oldt, newt;
@@ -43,7 +41,7 @@ ssize_t writen(int fd, const void *vptr, size_t n) {
     const char *ptr;
     ptr = vptr;
     nleft = n;
-    
+
     while (nleft > 0) {
         if ((nwritten = write(fd, ptr, nleft)) <= 0) {
             if (errno == EINTR) {
@@ -74,7 +72,7 @@ ssize_t readn(int fd, void *vptr, size_t n) { /* Read "n" bytes from a descripto
             else {
                 return -1;
             }
-        } 
+        }
         else if (nread == 0) {
             break;              /* EOF */
         }
@@ -84,13 +82,11 @@ ssize_t readn(int fd, void *vptr, size_t n) { /* Read "n" bytes from a descripto
     return (n - nleft);         /* return >= 0 */
 }
 
-
 int server() {
     int socketfd, newsockfd, err, res, bytes_read;
     struct sockaddr_in addr, client_addr;
     socklen_t addrlen;
     int reuseaddr = 1;
-
 
     socketfd = socket(AF_INET, SOCK_STREAM, 0);
 
@@ -109,7 +105,6 @@ int server() {
     if (err < 0) {
         perror("Error when binding socket!");
         close(socketfd);
-
         exit(1);
     }
 
@@ -118,7 +113,6 @@ int server() {
         perror("Error in listen!");
         close(socketfd);
         exit(1);
-
     }
 
     addrlen = sizeof(struct sockaddr_in);
@@ -131,9 +125,7 @@ int server() {
         printf("Client connection accepted!\n");
     }
 
-
     int pid;
-
     pid = fork();
 
     if (pid == 0) { // The child sends messages to the client
@@ -141,19 +133,15 @@ int server() {
         // Start reading keyboard input and send it to the client
         while (1) {
             char c = my_getch();
-            // if (gets(input_message) == NULL) {
-            //     perror("input error");
-            // }
-            // else {
-            writen(newsockfd, &c, sizeof(c));
-            // }
+            uint32_t bytes = htonl(c);
+            writen(newsockfd, &bytes, sizeof(uint32_t));
         }
     }
     else { // The parent reads incoming messages
         char c;
+        uint32_t bytes;
         while (1) {
-            
-            bytes_read = readn(newsockfd, &c, sizeof(c));
+            bytes_read = readn(newsockfd, &bytes, sizeof(bytes));
             if (bytes_read == 0) {
                 printf("Session has ended, closing server...\n");
                 kill(pid, SIGTERM);
@@ -167,19 +155,14 @@ int server() {
                 exit(1);
             }
             else {
-                // printf("%c", c);
+                c = (char)(ntohl(bytes));
                 putchar(c);
             }
         }
     }
-
-
     close(newsockfd);
     close(socketfd);
-
-
 }
-
 
 int client(char *hostname) {
     int socketfd, bytes_read;
@@ -187,7 +170,6 @@ int client(char *hostname) {
     struct hostent *h;
     struct sockaddr_in serv_addr;
     struct in_addr *addr;
-
 
     h = gethostbyname(hostname);
 
@@ -204,7 +186,6 @@ int client(char *hostname) {
         perror("Error when creating socket!");
         exit(1);
     }
-    
 
     serv_addr.sin_family = AF_INET;
     serv_addr.sin_port = htons(PORT_NUM);
@@ -226,22 +207,15 @@ int client(char *hostname) {
         char c;
         while (1) {
             c = my_getch();
-            
-            // if (c == '\0') {
-                // perror("input error");
-            // }
-            // else {
-            writen(socketfd, &c, sizeof(c));
-            // }
-            // c = '\0';
+            uint32_t bytes = htonl(c);
+            writen(socketfd, &bytes, sizeof(uint32_t));
         }
-
     }
     else { // Parent reads incoming messages
         char c;
+        uint32_t bytes;
         while (1) {
-            
-            bytes_read = readn(socketfd, &c, sizeof(c));
+            bytes_read = readn(socketfd, &bytes, sizeof(bytes));
             if (bytes_read == 0) {
                 printf("Session has ended, closing client...\n");
                 kill(pid, SIGTERM);
@@ -255,43 +229,27 @@ int client(char *hostname) {
                 exit(1);
             }
             else {
-                // printf("%c", c);
+                c = (char) (ntohl(bytes));
                 putchar(c);
             }
         }
     }
-
-
     close(socketfd);
-
-
-
-
 }
-
-
 
 int main(int argc, char **argv) {
     setvbuf(stdout, NULL, _IONBF, 0);
 
     if (argc < 2 ) {
         server();
-
     }
     else if (argc == 2) {
         client(argv[1]);
-
     }
     else {
         printf("Server Syntax: %s \n", argv[0]);
         printf("Client Syntax: %s <hostname> \n", argv[0]);
         exit(1);
     }
-
-
-
-
-
-
     return 0;
 }
