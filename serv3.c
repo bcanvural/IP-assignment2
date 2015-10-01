@@ -83,6 +83,7 @@ void recv_requests(int fd, struct sockaddr_in client_addr, socklen_t*  addrlen) 
     if (newfd < 0) {
         close(fd);
         close(newfd);
+        shmdt((void *) client_counter);
         exit(1);
     }
     treat_request(newfd);
@@ -90,6 +91,7 @@ void recv_requests(int fd, struct sockaddr_in client_addr, socklen_t*  addrlen) 
     semop(sem, &up, 1);
     close(fd);
     close(newfd);
+    shmdt((void *) client_counter);
     exit(0);
 }
 
@@ -97,8 +99,10 @@ void recv_requests(int fd, struct sockaddr_in client_addr, socklen_t*  addrlen) 
 // the semaphore array for destruction.
 void sig_int(int sig) {
     if (sig == SIGINT) {
+        shmdt((void *) client_counter);
         shmctl(shmid, IPC_RMID, 0);
         semctl(sem, 0, IPC_RMID);
+        signal(SIGCHLD, SIG_DFL);
         exit(0);
     }
 }
@@ -154,8 +158,8 @@ int main(int argc, char **argv) {
     addrlen = sizeof(struct sockaddr_in);
 
     signal(SIGINT, sig_int); // Use custom SIGINT handler to destroy semaphore
-    // and shared memory segment when the server is
-    // killed.
+                             // and shared memory segment when the server is
+                             // killed.
 
     // Set up the shared memory segment to store the client counter
     shmid = shmget(IPC_PRIVATE, sizeof(uint32_t), 0600);
@@ -181,7 +185,7 @@ int main(int argc, char **argv) {
     semop(sem, &up, 1); // Start at value 1
     signal(SIGCHLD, sig_chld);
 
-    //setting socket_vars struct
+    // setting socket_vars struct
     s_vars.socketfd = socketfd;
     s_vars.client_addr = client_addr;
     s_vars.addrlen = addrlen;
@@ -190,7 +194,7 @@ int main(int argc, char **argv) {
     int i;
     for (i = 0; i < NB_PROC; i++) {
         int pid = fork();
-        if (pid == 0) { //child
+        if (pid == 0) { // child
             recv_requests(socketfd, client_addr, &addrlen);
         }
     }
