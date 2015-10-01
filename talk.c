@@ -12,6 +12,8 @@
 
 #define PORT_NUM 5555
 
+int pid;
+
 char my_getch() {
     char buf = 0;
     struct termios oldt, newt;
@@ -82,6 +84,14 @@ ssize_t readn(int fd, void *vptr, size_t n) { /* Read "n" bytes from a descripto
     return (n - nleft);         /* return >= 0 */
 }
 
+
+void sig_int(int sig) {
+    if (sig == SIGINT) {
+        kill(pid, SIGTERM);
+        exit(0);
+    }
+}
+
 int server() {
     int socketfd, newsockfd, err, res, bytes_read;
     struct sockaddr_in addr, client_addr;
@@ -125,7 +135,7 @@ int server() {
         printf("Client connection accepted!\n");
     }
 
-    int pid;
+    // int pid;
     pid = fork();
 
     if (pid == 0) { // The child sends messages to the client
@@ -138,6 +148,7 @@ int server() {
         }
     }
     else { // The parent reads incoming messages
+        signal(SIGINT, sig_int);
         char c;
         uint32_t bytes;
         while (1) {
@@ -199,7 +210,7 @@ int client(char *hostname) {
 
     printf("Connected to server!\n");
 
-    int pid;
+    // int pid;
 
     pid = fork();
 
@@ -212,6 +223,7 @@ int client(char *hostname) {
         }
     }
     else { // Parent reads incoming messages
+        signal(SIGINT, sig_int);
         char c;
         uint32_t bytes;
         while (1) {
