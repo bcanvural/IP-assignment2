@@ -1,1 +1,47 @@
-This will become the report!
+/* Internet Programming 2015/2016
+ * 
+ * Assignment 2
+ * Authors:   Baris Can Vural,    Floris Turkenburg
+ * VUNetID:   bvl250,             ftg600
+ * 
+ * Date: 2 October 2015
+ */
+
+
+Questions
+
+
+
+
+
+Q-D:
+(a) Iterative, because the server only needs to accept one client, and when the
+session has ended, both the client and server program should terminate. Thus 
+accepting multiple connections, let alone concurrent connections, is not 
+required.
+
+Q-E:
+(a) It is possible to run both client and server on one machine, e.g. through 
+    localhost.
+
+(b) Running two instance as server on one machine would only be possible if the 
+    machine contains two (or more) network cards, i.e. two different 
+    IP-addresses. If this is not the case, the program would have to be changed
+    to use a different port for every server instance in order to allow two or 
+    more server instances to run on one machine.
+
+
+Q-F:
+(a) 
+
+(b) Both server and client would fork a child process, in each case, the child
+    either reads input from the keyboard and sends it to the other party, or it
+    reads input from the network socket and prints this. The parent would take 
+    care of the other task accordingly. In our implementation, the parent reads 
+    input from the socket, this is so that it can kill the child whenever the
+    read() returns an error, or when 0 bytes are read which means that the 
+    connection ended and the program should terminate.
+    We chose to use multiple processes to handle the concurrent receiving of the
+    different input because it seemed the easiest and obvious choice. Handling 
+    this sequentially could also cause a delay, making the talk program less 
+    realtime.
