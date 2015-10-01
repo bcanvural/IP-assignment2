@@ -7,41 +7,41 @@
  * Date: 2 October 2015
  */
 
+**** QUESTION NUMBER Q-D OCCURS TWICE IN THE ASSIGNMENT, IN SECTION 1.2 AND 2.2
 
 Questions
 
+Q-A: 
+Different computer systems represent numbers in different orderings. A legacy system like SPARC would read in big endian order. There won’t be any problems in our case because we convert the bytes from host to network byte ordering when sending the bytes, and back from network to host byte ordering when receiving the bytes. The conversion to host byte ordering covers the possible difference in byte ordering from the sending and receiving machine.
+
+Q-B: 
+serv1.c would only accept 1 client connection at a time. serv2.c creates a new process for every new client. Since we set the backlog to 5, there would be at most 5 pending connections and the rest of the clients would be refused a connection. serv3.c uses preforking structure. If we set the number of pre-forked processes to 20, serv3 could serve to 20 clients simultaneously without any problem.
+    Serv1 behaves the worst because it doesn’t support multiple client connections at the same time.
+    Serv3 behaves the best because one could pre-fork 20 processes and this way 20 client connections can be supported.
+
+Q-C: 
+Serving multiple clients concurrently can create race conditions on the shared resource which is the counter. We avoided this race condition by placing semaphores when accessing the shared resource. 
+A different approach would be to increment the counter before forking. After the fork, the child would have its own local copy of the counter value when it was forked which will not be changed anymore.
+
+Q-D: 
+With serv3, we faced the same problem of accessing shared resources from concurrently running processes. We avoided this problem by placing semaphores when accessing the shared resources.
+The alternative approach we proposed in Q-C would not work here because preforked processes do not necessarily accept connections in the order they were forked/created.
 
 
 
-
+Section 2.2 !!!
 Q-D:
-(a) Iterative, because the server only needs to accept one client, and when the
-session has ended, both the client and server program should terminate. Thus 
-accepting multiple connections, let alone concurrent connections, is not 
-required.
+(a) Iterative, because the server only needs to accept one client, and when the session has ended, both the client and server program should terminate. Thus accepting multiple connections, let alone concurrent connections, is not required.
 
 Q-E:
-(a) It is possible to run both client and server on one machine, e.g. through 
-    localhost.
+(a) It is possible to run both client and server on one machine, e.g. through localhost.
 
-(b) Running two instance as server on one machine would only be possible if the 
-    machine contains two (or more) network cards, i.e. two different 
-    IP-addresses. If this is not the case, the program would have to be changed
-    to use a different port for every server instance in order to allow two or 
-    more server instances to run on one machine.
+(b) Running two instance as server on one machine would only be possible if the machine contains two (or more) network cards, i.e. two different IP-addresses. If this is not the case, the program would have to be changed to use a different port for every server instance in order to allow two or more server instances to run on one machine.
 
 
 Q-F:
 (a) 
 
-(b) Both server and client would fork a child process, in each case, the child
-    either reads input from the keyboard and sends it to the other party, or it
-    reads input from the network socket and prints this. The parent would take 
-    care of the other task accordingly. In our implementation, the parent reads 
-    input from the socket, this is so that it can kill the child whenever the
-    read() returns an error, or when 0 bytes are read which means that the 
-    connection ended and the program should terminate.
-    We chose to use multiple processes to handle the concurrent receiving of the
-    different input because it seemed the easiest and obvious choice. Handling 
-    this sequentially could also cause a delay, making the talk program less 
-    realtime.
+(b) Both server and client would fork a child process, in each case, the child either reads input from the keyboard and sends it to the other party, or it reads input from the network socket and prints this. The parent would take care of the other task accordingly. In our implementation, the parent reads input from the socket, this is so that it can kill the child whenever the read() returns an error, or when 0 bytes are read which means that the connection ended and the program should terminate. We chose to use multiple processes to handle the concurrent receiving of the different input because it seemed the easiest and obvious choice. Handling this sequentially could also cause a delay, making the talk program less realtime.
+
+
